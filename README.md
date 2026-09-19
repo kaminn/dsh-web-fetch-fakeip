@@ -105,6 +105,32 @@ Then ask the agent to fetch a page, or run the live suite:
 npm run test:live
 ```
 
+**A restart is required after installing or removing a bundle.** The profile's
+`patchReload: live` watcher only re-reads `cordis.patch.yml`; the
+`dsh.profile.bundles` list is read once at boot. Adding the bundle registers it
+in that list immediately (so `--dump-config` shows it), but the running host
+keeps the layer stack it booted with until it restarts.
+
+### Uninstall
+
+```sh
+dsh plugin --profile web remove dsh-web-fetch-fakeip
+```
+
+`dsh plugin` reconciles `dsh.profile.bundles` after pnpm finishes, so the bundle
+layer leaves the stack along with the dependency. Restart the profile
+afterwards. The stock `web-fetch-http` row returns automatically — the disable
+came from this bundle's patch, so removing the bundle removes the disable too.
+
+### Updating
+
+```sh
+dsh plugin --profile web update dsh-web-fetch-fakeip
+```
+
+A `github:` spec without a ref tracks the repository's default branch, and pnpm
+resolves it at install/update time — so updates are explicit, never silent.
+
 -----
 
 <a id="example-configurations"></a>
@@ -227,7 +253,15 @@ carrying credentials, and the same `WebError` codes (`WEB_INVALID_URL`,
 ## Diagnosing your setup
 
 Run the bundled diagnostic first — it separates the three cases that look alike
-from the tool's error message:
+from the tool's error message. When installed as a bundle, resolve its path
+through the package so it works wherever pnpm placed it:
+
+```sh
+# From the profile directory (the profile that has the bundle installed).
+node --input-type=module -e "import('dsh-web-fetch-fakeip/scripts/diagnose.mjs')"
+```
+
+Or run the file directly — from a source checkout, or via the installed path:
 
 ```sh
 node scripts/diagnose.mjs

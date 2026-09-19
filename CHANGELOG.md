@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `files` omitted `scripts/` and `test/`, so an installed bundle shipped
+  without the diagnostic script the README points at, and without the test
+  suites.
+- `exports` did not expose `./scripts/diagnose.mjs`, so the diagnostic was
+  unreachable through the package specifier even once shipped.
+
+### Added
+
+- Uninstall and update instructions, and a note that installing or removing a
+  bundle requires a restart: `patchReload: live` re-reads only
+  `cordis.patch.yml`, while `dsh.profile.bundles` is read once at boot.
+
 ## [0.1.0] - 2026-09-19
 
 ### Added

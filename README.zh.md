@@ -95,6 +95,30 @@ dsh --profile web --dump-config | grep -A3 fakeip
 npm run test:live
 ```
 
+**安装或卸载 bundle 后必须重启。** profile 的 `patchReload: live` 监听器只会
+重新读取 `cordis.patch.yml`；而 `dsh.profile.bundles` 列表只在启动时读取一次。
+安装 bundle 会立刻把它写入该列表（因此 `--dump-config` 能看到），但正在运行的
+host 会一直沿用启动时的层栈，直到重启。
+
+### 卸载
+
+```sh
+dsh plugin --profile web remove dsh-web-fetch-fakeip
+```
+
+`dsh plugin` 会在 pnpm 结束后核对 `dsh.profile.bundles`，因此该 bundle 层会随
+依赖一起离开层栈。之后重启 profile。原版 `web-fetch-http` 行会自动恢复——那条
+禁用来自本 bundle 的 patch，所以移除 bundle 也就移除了禁用。
+
+### 更新
+
+```sh
+dsh plugin --profile web update dsh-web-fetch-fakeip
+```
+
+不带 ref 的 `github:` 说明符跟踪仓库的默认分支，pnpm 在安装/更新时才解析它——
+因此更新是显式的，绝不会静默发生。
+
 -----
 
 <a id="示例配置"></a>
@@ -209,7 +233,15 @@ URL，以及相同的 `WebError` 错误码（`WEB_INVALID_URL`、`WEB_BLOCKED_UR
 <a id="诊断你的环境"></a>
 ## 诊断你的环境
 
-先运行随包诊断脚本——它能把三种从报错信息看起来一样的情形区分开：
+先运行随包诊断脚本——它能把三种从报错信息看起来一样的情形区分开。作为 bundle
+安装时，请通过包来解析其路径，这样无论 pnpm 把它放在哪里都能用：
+
+```sh
+# 在 profile 目录下执行（即安装了本 bundle 的那个 profile）。
+node --input-type=module -e "import('dsh-web-fetch-fakeip/scripts/diagnose.mjs')"
+```
+
+也可以直接运行文件——在源码 checkout 里，或经由安装后的路径：
 
 ```sh
 node scripts/diagnose.mjs

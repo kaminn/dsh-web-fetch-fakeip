@@ -9,10 +9,13 @@
       "default": "./src/index.js"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./scripts/diagnose.mjs": "./scripts/diagnose.mjs",
     "./package.json": "./package.json"
   },
   "files": [
     "src",
+    "scripts",
+    "test",
     "cordis.patch.yml",
     "examples",
     "README.md",
