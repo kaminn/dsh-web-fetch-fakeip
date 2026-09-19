@@ -304,7 +304,10 @@ resolver 对每组应答的判定：
 | [`src/resolver.js`](src/resolver.js) | 目的地策略：地址归类、网段匹配、resolver 判定 |
 | [`cordis.patch.yml`](cordis.patch.yml) | bundle patch：禁用原版行，插入本行 |
 | [`scripts/diagnose.mjs`](scripts/diagnose.mjs) | 报告 DNS 实际应答以及配置是否覆盖 |
+| [`scripts/check-package.mjs`](scripts/check-package.mjs) | 当发布包缺少必需文件或夹带禁止文件时失败 |
+| [`scripts/release-control.mjs`](scripts/release-control.mjs) | 发布门禁：标签/版本校验、npm 幂等检查、CHANGELOG 说明提取、GitHub Release 同步 |
 | [`test/resolver.test.js`](test/resolver.test.js) | 离线单元测试（不联网） |
+| [`test/release-control.test.js`](test/release-control.test.js) | 发布门禁的离线测试 |
 | [`test/transport.live.js`](test/transport.live.js) | 可选的真实网络测试 |
 
 ### 为什么必须禁用原版行
@@ -325,12 +328,18 @@ resolver 对每组应答的判定：
 npm test          # 离线单元测试——不联网、不查 DNS
 npm run test:live # 可选的真实网络测试——需要可用的 DNS 与出网
 npm run check     # 语法检查 + 离线测试
+npm run pack:check # 校验发布包内容
+npm run verify    # check + pack:check——发布工作流所依据的门禁
 ```
 
 离线测试注入 resolver，因此不触碰网络即可断言目的地策略。真实网络测试同时断言
 两件事：真实主机名**即使**解析到占位地址也能抓取成功，且每个内网目的地**仍然**被
 拒绝。在没有 fake-ip DNS 的主机上，fake-ip 相关断言会自动跳过，因此该套件在任何
 环境都有意义。
+
+`pack:check` 的存在理由：`files` 白名单写错在开发期是看不见的——整个工作树都在——
+只有消费者安装之后才会暴露。本仓库已经踩过一次，因此该检查在**每次 CI** 都跑，
+而不只在发布时跑。
 
 在 profile 之外开发时，`node_modules` 需要能解析到 harness 包。把它指向安装的共享
 依赖闭包：
@@ -344,6 +353,18 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 ```
 
 `node_modules` 已被 gitignore。
+
+### 持续集成
+
+| 工作流 | 触发 | 用途 |
+| --- | --- | --- |
+| [`ci.yml`](.github/workflows/ci.yml) | 推送到 `main`、pull request | 覆盖受支持 DSH 版本的测试矩阵、打包校验、真实网络通道 |
+| [`release.yml`](.github/workflows/release.yml) | 推送 `v*` 标签 | 经 Trusted Publishing（OIDC）发布到 npm，随后创建 GitHub Release |
+
+测试矩阵**显式钉住**每个 DSH 版本，而不是用范围解析：`@deepseek-ai/dsh-*` 在 npm 上的
+`latest` 标签仍指向旧的 `0.0.1-rc` 线，而当前版本挂在 `next` 下。
+
+发布流程与一次性的 npm 配置见 [RELEASING.md](RELEASING.md)。
 
 -----
 

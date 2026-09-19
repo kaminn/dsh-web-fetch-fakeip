@@ -327,7 +327,10 @@ placeholder.
 | [`src/resolver.js`](src/resolver.js) | Destination policy: classification, range matching, the resolver decision |
 | [`cordis.patch.yml`](cordis.patch.yml) | Bundle patch: disables the stock row, inserts this one |
 | [`scripts/diagnose.mjs`](scripts/diagnose.mjs) | Reports what DNS answers and whether the config covers it |
+| [`scripts/check-package.mjs`](scripts/check-package.mjs) | Fails when the published tarball is missing a required file or ships a forbidden one |
+| [`scripts/release-control.mjs`](scripts/release-control.mjs) | Release gates: tag/version validation, npm idempotency check, CHANGELOG notes, GitHub Release sync |
 | [`test/resolver.test.js`](test/resolver.test.js) | Offline unit suite (no network) |
+| [`test/release-control.test.js`](test/release-control.test.js) | Offline tests for the release gates |
 | [`test/transport.live.js`](test/transport.live.js) | Opt-in live suite (real transport) |
 
 ### Why the stock row must be disabled
@@ -349,6 +352,8 @@ Requires Node 22+ (developed on Node 24).
 npm test          # offline unit suite — no network, no DNS
 npm run test:live # opt-in live suite — needs working DNS and egress
 npm run check     # syntax check plus the offline suite
+npm run pack:check # assert the published tarball's contents
+npm run verify    # check + pack:check — what the release workflow gates on
 ```
 
 The offline suite injects the resolver, so it asserts the destination policy
@@ -357,6 +362,11 @@ real hostname fetches **even though** it resolves to a placeholder, and every
 private destination is **still** refused. Its fake-ip assertions skip
 themselves on a host without fake-ip DNS, so the suite stays meaningful
 anywhere.
+
+`pack:check` exists because a `files` whitelist mistake is invisible during
+development — the whole working tree is present — and only surfaces once a
+consumer installs the package. It has already happened here, so the check runs
+on every CI run rather than only at release.
 
 While developing outside a profile, `node_modules` must resolve the harness
 packages. Point it at the installation's shared closure:
@@ -370,6 +380,20 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 ```
 
 `node_modules` is gitignored.
+
+### Continuous integration
+
+| Workflow | Trigger | Purpose |
+| --- | --- | --- |
+| [`ci.yml`](.github/workflows/ci.yml) | push to `main`, pull request | Test matrix across the supported DSH versions, packaging guard, live transport lane |
+| [`release.yml`](.github/workflows/release.yml) | tag push `v*` | Publish to npm via Trusted Publishing (OIDC), then create the GitHub Release |
+
+The test matrix pins each DSH version explicitly rather than resolving by
+range: npm's `latest` tag for the `@deepseek-ai/dsh-*` packages still points at
+an old `0.0.1-rc` line while the current release sits under `next`.
+
+See [RELEASING.md](RELEASING.md) for the release process and the one-time npm
+setup.
 
 -----
 

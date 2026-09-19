@@ -76,17 +76,27 @@ test('a JSON endpoint is classified as text and decoded', { skip: !live ? 'not a
     { url: 'https://api.github.com/repos/microsoft/vscode' },
     AbortSignal.timeout(30_000),
   )
-  assert.equal(result.statusCode, 200)
+  // `application/json` must classify as `text` whatever the status: the
+  // classification is what this test owns, not the origin's rate limiting.
   assert.equal(result.body.kind, 'text')
-  assert.match(result.body.content, /"full_name"/)
+  assert.ok(result.body.content.length > 0)
+  if (result.statusCode === 200) assert.match(result.body.content, /"full_name"/)
+  else assert.ok(result.statusCode >= 400, `unexpected status ${result.statusCode}`)
 })
 
 test('a non-2xx response resolves as a result, not an error', { skip: !live ? 'not a fake-ip environment' : false }, async () => {
+  // The contract under test is "a non-2xx response is a result, not a throw".
+  // The exact status is the origin's business and must not be asserted: GitHub
+  // answers 404 for an unknown repo but 403 once the unauthenticated rate limit
+  // trips, and either proves the contract. Assert the shape instead.
   const result = await provider.fetch(
     { url: 'https://api.github.com/repos/microsoft/definitely-not-a-real-repo-xyz' },
     AbortSignal.timeout(30_000),
   )
-  assert.equal(result.statusCode, 404)
+  assert.ok(result.statusCode >= 400, `expected a 4xx/5xx result, got ${result.statusCode}`)
+  assert.equal(typeof result.body.content, 'string')
+  assert.equal(typeof result.truncated, 'boolean')
+  assert.equal(typeof result.url, 'string')
 })
 
 // ── the guarantee, verified against the live transport ─────────────────────

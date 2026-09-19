@@ -1,0 +1,121 @@
+name: Release
+
+# Publishes to npm via Trusted Publishing (OIDC) — no NPM_TOKEN secret exists
+# in this repository, and npm attaches a provenance attestation to the tarball
+# linking it to this exact workflow run and commit.
+#
+# TRIGGER: pushing a tag matching `v*` (e.g. `v0.1.0`).
+# The tag MUST equal `v` + package.json `version`; the workflow verifies that
+# before anything is published.
+#
+# ONE-TIME SETUP (manual, on npmjs.com — cannot be automated):
+#   1. Publish the first version manually; a trusted publisher can only be
+#      configured for a package that already exists:
+#        npm login && npm publish --access public
+#   2. npmjs.com -> the package -> Settings -> Publishing access
+#      -> Trusted Publishers -> "Add trusted publisher"
+#   3. Provider: GitHub Actions
+#      Organization or user: kaminn
+#      Repository:           dsh-web-fetch-fakeip
+#      Workflow filename:    release.yml      <-- must match this file exactly
+#      Environment:          (leave blank)
+#   4. Save. Do NOT add an NPM_TOKEN secret — Trusted Publishing replaces it.
+# Reference: https://docs.npmjs.com/trusted-publishers
+#
+# RE-RUNNING: the workflow is idempotent. A version already present on npm
+# skips the publish steps, so re-running after a partial failure is safe.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Manual re-run for an existing tag, e.g. after a transient registry failure.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to (re-)release, e.g. v0.1.0'
+        required: true
+        type: string
+      dry_run:
+        description: 'Pack and verify only — do not publish'
+        type: boolean
+        default: false
+
+# The same tag must not be released twice concurrently; a manual retry and the
+# tag push are mutually exclusive. Never cancel in progress: a cancelled
+# publish can leave npm and GitHub Releases disagreeing.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write  # create the GitHub Release
+  id-token: write  # mint the OIDC token npm Trusted Publishing exchanges
+
+jobs:
+  release:
+    name: verify · publish · release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          # The manual path names a tag explicitly; the push path is already on it.
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing needs npm >= 11.5.1. Node 24 ships npm 11.x, but pin
+      # the floor explicitly so a runner image change cannot silently break
+      # publishing.
+      - name: Ensure npm >= 11.5.1
+        run: |
+          npm install -g npm@latest
+          node -e "const v=require('child_process').execSync('npm --version').toString().trim();const [maj,min]=v.split('.').map(Number);if(maj<11||(maj===11&&min<5)){console.error('npm too old: '+v);process.exit(1)}console.log('npm '+v)"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Fails when the tag and package.json disagree, when "repository" is
+      # missing (provenance would be rejected with E422), or when the package
+      # is marked private. Runs before any publish attempt.
+      - name: Validate tag and manifest
+        run: node scripts/release-control.mjs validate "$RELEASE_TAG"
+
+      - name: Extract release notes from CHANGELOG
+        run: node scripts/release-control.mjs notes "$RELEASE_TAG" "$RUNNER_TEMP/release-notes.md"
+
+      # Idempotency gate: if this exact version is already on npm, the publish
+      # steps below are skipped and the run proceeds to release reconciliation.
+      - name: Check whether this version is already on npm
+        id: check
+        run: node scripts/release-control.mjs check "$RELEASE_TAG"
+
+      - name: Full verification
+        if: steps.check.outputs.published != 'true'
+        run: npm run verify
+
+      - name: Publish to npm
+        if: steps.check.outputs.published != 'true' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
+        run: npm publish --provenance --access public
+
+      - name: Dry run — stop before publishing
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: |
+          echo "dry_run: skipping publish"
+          npm pack --dry-run
+
+      # Runs unconditionally: on a first release it creates the Release after
+      # npm confirms the version is live; on a re-run it reconciles an existing
+      # one. A Release is never announced before the version is installable.
+      - name: Create or update the GitHub Release
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-control.mjs release "$RELEASE_TAG" "$RUNNER_TEMP/release-notes.md"

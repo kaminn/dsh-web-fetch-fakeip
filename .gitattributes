@@ -1,0 +1,16 @@
+# Normalize line endings in the repository. The working tree may use CRLF on
+# Windows, but the committed blob is always LF, so a checkout on another
+# platform does not show every file as modified.
+* text=auto eol=lf
+
+# Binary assets must never be normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.tgz binary
+
+# GitHub Actions workflow files are parsed as YAML; keep them LF.
+.github/workflows/*.yml text eol=lf

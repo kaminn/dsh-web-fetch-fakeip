@@ -1,0 +1,127 @@
+name: CI
+
+# Runs on every push to the default branch and every pull request. Kept
+# separate from release.yml on purpose: a trusted publisher binds to one exact
+# workflow FILENAME, so renaming this file later would mean re-doing that
+# binding on npmjs.com. Two stable filenames avoid that.
+#
+# This workflow never publishes. It is the gate a release depends on.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A superseded PR run is on a stale commit, so cancel it. Never cancel a push
+# run: it is producing the post-merge signal for the default branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # The offline suite is the primary gate: it asserts the destination policy
+  # (fake-ip accepted, private/loopback/literal refused) with an injected
+  # resolver, so it needs no network and cannot be flaky.
+  #
+  # The matrix covers the DSH lines this plugin declares in peerDependencies.
+  # `latest` on npm still points at an old 0.0.1-rc line for these packages
+  # while the real current release sits under the `next` tag, so every version
+  # is pinned explicitly rather than resolved by range.
+  test:
+    name: test · node ${{ matrix.node }} · dsh ${{ matrix.dsh }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The stable DSH line, and the oldest release this plugin claims.
+          - node: 22
+            dsh: 0.1.5-rc.2
+          - node: 24
+            dsh: 0.1.5-rc.2
+          - node: 24
+            dsh: 0.1.6-alpha.2
+          - node: 24
+            dsh: 0.1.2-rc.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # npm >= 11.5.1 is required for OIDC trusted publishing, and the release
+      # workflow relies on it. Pin it here too so the version CI exercises is
+      # the version that will publish.
+      - name: Ensure npm >= 11.5.1
+        run: |
+          npm install -g npm@latest
+          node -e "const v=require('child_process').execSync('npm --version').toString().trim();const [maj,min]=v.split('.').map(Number);if(maj<11||(maj===11&&min<5)){console.error('npm too old: '+v);process.exit(1)}console.log('npm '+v)"
+
+      # Override the pinned devDependencies with the matrix's DSH line, so the
+      # suite runs against the version under test rather than the default.
+      - name: Install dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-audit --no-fund --no-save \
+            "@deepseek-ai/dsh-web-fetch-http@${{ matrix.dsh }}" \
+            "@deepseek-ai/dsh-web@${{ matrix.dsh }}"
+
+      - name: Report resolved DSH versions
+        run: |
+          node -e "
+          for (const p of ['@deepseek-ai/dsh-web-fetch-http','@deepseek-ai/dsh-web']) {
+            console.log(p, require(p + '/package.json').version)
+          }"
+
+      - name: Syntax check
+        run: |
+          node --check src/index.js
+          node --check src/config.js
+          node --check src/resolver.js
+          node --check scripts/diagnose.mjs
+          node --check scripts/check-package.mjs
+
+      - name: Offline tests
+        run: npm test
+
+  # Packaging guard. A `files` whitelist failure is invisible during
+  # development because the whole working tree is present, and only surfaces
+  # after publishing — so it is checked on every run, not only at release.
+  # This is the check that catches a required file going missing from the
+  # tarball, and a documented script that is not reachable through `exports`.
+  package:
+    name: package contents
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - name: Check tarball contents
+        run: npm run pack:check
+
+  # Live transport lane: proves the plugin actually fixes the reported failure
+  # against real DNS and egress, and that SSRF protection survived the fix.
+  # Runs on the fake-ip detection itself — the suite skips its fake-ip
+  # assertions when the runner has normal DNS, so this lane is honest either
+  # way rather than silently green.
+  live:
+    name: live transport
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - name: Live tests (real network)
+        run: npm run test:live
