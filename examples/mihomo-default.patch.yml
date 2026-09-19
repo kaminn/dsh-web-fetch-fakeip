@@ -1,0 +1,24 @@
+# Example: the common case — mihomo/Clash TUN mode with default fake-ip range.
+#
+# This is the whole configuration. Every field defaults to the stock
+# `dsh-web-fetch-http` value, so nothing needs restating: mounting the plugin
+# with no `config:` at all is enough, which is exactly what the bundle patch
+# (`cordis.patch.yml`) does.
+#
+# Use this file when you want the row written out explicitly — for a profile
+# patch, a preset, or a deployment that pins the range on purpose.
+
+# The stock provider registers the same `http` fetch-provider id, and the web
+# seam rejects a duplicate with WEB_DUPLICATE_PROVIDER. It must be disabled.
+- id: web-fetch-http
+  disabled: true
+
+- insert:
+    - id: web-fetch-fakeip
+      name: 'dsh-web-fetch-fakeip'
+      config:
+        # mihomo's `dns.fake-ip-range` default. Confirm yours in the proxy
+        # config before changing this; `198.18.0.1/16` is a subset of this
+        # block, so the default covers both spellings.
+        fakeIpRanges:
+          - 198.18.0.0/15

@@ -1,0 +1,57 @@
+{
+  "name": "dsh-web-fetch-fakeip",
+  "version": "0.1.0",
+  "description": "fake-ip-aware WebFetchProvider for the DeepSeek Harness web seam — keeps the web_fetch tool working under mihomo/Clash fake-ip DNS without disabling fake-ip or setting proxy environment variables.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "default": "./src/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "examples",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "web-fetch",
+    "fake-ip",
+    "mihomo",
+    "clash",
+    "tun",
+    "proxy",
+    "ssrf"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:live": "node --test \"test/**/*.live.js\"",
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/resolver.js && npm test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "ipaddr.js": "^2.5.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-web": "^0.1.5-rc.2",
+    "@deepseek-ai/dsh-web-fetch-http": "^0.1.5-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.2"
+  }
+}

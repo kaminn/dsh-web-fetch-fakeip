@@ -1,0 +1,30 @@
+# Example: a non-default `dns.fake-ip-range`, plus tightened transport limits.
+#
+# Some proxy configurations move the placeholder block — a `10.x` block is
+# common when the operator wants placeholders that a corporate DNS or a
+# captive portal will not treat as public. Match `fakeIpRanges` to whatever
+# the proxy actually writes, or fake-ip hostnames will keep failing.
+#
+# Check the proxy's own configuration for the authoritative value. For
+# mihomo/Clash it is `dns.fake-ip-range`; for sing-box it is
+# `dns.fakeip.range`.
+
+- id: web-fetch-http
+  disabled: true
+
+- insert:
+    - id: web-fetch-fakeip
+      name: 'dsh-web-fetch-fakeip'
+      config:
+        fakeIpRanges:
+          - 10.18.0.0/16
+          # More than one block is allowed; the resolver accepts an answer set
+          # when every address falls in *some* configured block.
+          - 198.18.0.0/15
+
+        # Transport limits, identical in meaning to the stock provider.
+        maxResponseBytes: 2000000
+        maxBodyChars: 50000
+        timeoutMs: 20000
+        maxRedirects: 3
+        userAgent: 'my-deployment/1.0 (+https://example.internal)'

@@ -1,0 +1,15 @@
+# Dependencies (installed by `dsh plugin --profile <name> add ...` or npm).
+node_modules/
+
+# The local module-resolution junction used when developing this plugin
+# outside a profile. Never commit it.
+/node_modules
+
+# Logs and editor noise.
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

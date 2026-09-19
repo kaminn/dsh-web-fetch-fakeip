@@ -1,0 +1,22 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack.
+#
+# Applied in `dsh.profile.bundles` order — after `@deepseek-ai/dsh-base`, which
+# is what inserts the stock `web-fetch-http` row this patch disables.
+#
+# Both providers register the same fetch-provider id (`http`); the web seam
+# rejects a duplicate with `WEB_DUPLICATE_PROVIDER`, so the stock row must go
+# before this one is inserted. Disabling it does not remove the transport
+# package — this plugin imports `HttpFetchProvider` from it.
+- id: web-fetch-http
+  disabled: true
+
+- insert:
+    - id: web-fetch-fakeip
+      name: 'dsh-web-fetch-fakeip'
+      # Every field defaults to the stock provider's value, so mounting this
+      # plugin with no config changes exactly one thing: how a destination is
+      # judged. Uncomment and edit only if the proxy is not on the default
+      # placeholder block.
+      # config:
+      #   fakeIpRanges:
+      #     - 198.18.0.0/15
