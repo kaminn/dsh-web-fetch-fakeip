@@ -10,6 +10,19 @@ configuration fields, and the supported DSH peer versions — may change in a
 minor release. A breaking change will be called out explicitly under
 `### Changed` or `### Removed`.
 
+## [0.1.1-alpha.1] - 2026-09-20
+
+Release tooling only — no runtime code changes. This prerelease exists to
+exercise the tag-driven Trusted Publishing pipeline end to end.
+
+### Added
+
+- Prerelease tags (e.g. `v0.1.1-alpha.1`) pass the release workflow's tag
+  gate.
+- Prerelease versions publish under the `next` dist-tag, so `latest` never
+  points at a prerelease and a bare `npm install` keeps resolving to the
+  stable line.
+
 ## [0.1.0] - 2026-09-19
 
 First published release.
@@ -51,4 +64,5 @@ First published release.
   check rather than being partly accepted, so a DNS answer cannot widen the
   policy by smuggling a private address alongside a placeholder.
 
+[0.1.1-alpha.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.1
 [0.1.0]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.0

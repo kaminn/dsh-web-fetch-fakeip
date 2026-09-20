@@ -101,9 +101,18 @@ jobs:
         if: steps.check.outputs.published != 'true'
         run: npm run verify
 
+      # Prerelease versions (a `-` in the version) publish under the `next`
+      # dist-tag: `npm publish` without --tag always moves `latest` to the
+      # published version regardless of semver ordering, so a prerelease
+      # would otherwise become what a bare `npm install` resolves to.
       - name: Publish to npm
         if: steps.check.outputs.published != 'true' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)
-        run: npm publish --provenance --access public
+        run: |
+          args=(--provenance --access public)
+          if [[ "$(node -p "require('./package.json').version")" == *-* ]]; then
+            args+=(--tag next)
+          fi
+          npm publish "${args[@]}"
 
       - name: Dry run — stop before publishing
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run

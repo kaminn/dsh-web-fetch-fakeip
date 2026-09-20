@@ -76,7 +76,9 @@ The tag push triggers `release.yml`, which:
 2. extracts this version's section from `CHANGELOG.md`;
 3. checks whether this exact version is already on npm;
 4. runs `npm run verify` and publishes with `--provenance --access public`,
-   unless step 3 found it already published;
+   unless step 3 found it already published; a prerelease version (a `-` in
+   the version) is published under the `next` dist-tag so `latest` never
+   points at a prerelease;
 5. creates or updates the GitHub Release, **after** npm confirms the version is
    queryable.
 

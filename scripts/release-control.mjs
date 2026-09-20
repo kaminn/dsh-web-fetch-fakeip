@@ -31,8 +31,8 @@ import { setTimeout as pause } from 'node:timers/promises'
 const exec = promisify(execFile)
 const REGISTRY = 'https://registry.npmjs.org'
 
-/** A release tag is exactly `v` followed by a semver triple. */
-const TAG_PATTERN = /^v\d+\.\d+\.\d+$/
+/** A release tag is `v` + a semver triple, optionally with a prerelease suffix. */
+const TAG_PATTERN = /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 
 /**
  * Read one exact version from the registry.
