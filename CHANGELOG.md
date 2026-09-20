@@ -23,6 +23,14 @@ exercise the tag-driven Trusted Publishing pipeline end to end.
   points at a prerelease and a bare `npm install` keeps resolving to the
   stable line.
 
+### Fixed
+
+- The packaging guard accepts `npm pack --dry-run --json` output from both
+  the pre-12 (array) and 12+ (name-keyed object) shapes — npm 12 changed the
+  shape, which made the first release run fail with "npm pack reported no
+  files". CI's packaging job now upgrades npm exactly like the release
+  workflow, so the two environments can no longer drift apart.
+
 ## [0.1.0] - 2026-09-19
 
 First published release.

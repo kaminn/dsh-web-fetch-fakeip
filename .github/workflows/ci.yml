@@ -104,6 +104,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      # The release workflow upgrades npm to @latest before it packs, and npm
+      # majors have changed `pack --json` output shape (npm 12 wrapped the
+      # result in an object keyed by package name), so this job must exercise
+      # the same npm major the release will use.
+      - name: Ensure npm >= 11.5.1
+        run: |
+          npm install -g npm@latest
+          node -e "const v=require('child_process').execSync('npm --version').toString().trim();const [maj,min]=v.split('.').map(Number);if(maj<11||(maj===11&&min<5)){console.error('npm too old: '+v);process.exit(1)}console.log('npm '+v)"
       - run: npm install --no-audit --no-fund
       - name: Check tarball contents
         run: npm run pack:check

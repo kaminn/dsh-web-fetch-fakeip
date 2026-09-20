@@ -66,8 +66,19 @@ try {
   fail(`npm pack --dry-run failed: ${error.message}`)
 }
 
-const packed = parsed[0]?.files?.map((entry) => entry.path)
-if (!Array.isArray(packed) || packed.length === 0) fail('npm pack reported no files')
+// npm ≤ 11 returned an array of pack results; npm 12+ returns an object keyed
+// by package name. Accept both, preferring the entry for this package, and
+// include a sample of the raw output on failure so a future shape change is
+// self-diagnosing instead of a bare "no files".
+const pack = Array.isArray(parsed)
+  ? parsed[0]
+  : parsed !== null && typeof parsed === 'object'
+    ? (parsed[manifest.name] ?? Object.values(parsed)[0])
+    : undefined
+const packed = pack?.files?.map((entry) => entry.path)
+if (!Array.isArray(packed) || packed.length === 0) {
+  fail('npm pack reported no files in a recognizable shape:', [JSON.stringify(parsed)?.slice(0, 400)])
+}
 
 const present = new Set(packed)
 const missing = REQUIRED.filter((path) => !present.has(path))
