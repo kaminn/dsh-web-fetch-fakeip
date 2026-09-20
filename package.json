@@ -1,6 +1,6 @@
 {
   "name": "dsh-web-fetch-fakeip",
-  "version": "0.1.0",
+  "version": "0.1.1-alpha.1",
   "description": "fake-ip-aware WebFetchProvider for the DeepSeek Harness web seam — keeps the web_fetch tool working under mihomo/Clash fake-ip DNS without disabling fake-ip or setting proxy environment variables.",
   "type": "module",
   "main": "src/index.js",
