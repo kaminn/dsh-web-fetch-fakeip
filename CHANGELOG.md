@@ -10,6 +10,27 @@ configuration fields, and the supported DSH peer versions — may change in a
 minor release. A breaking change will be called out explicitly under
 `### Changed` or `### Removed`.
 
+## [0.1.1-alpha.2] - 2026-09-28
+
+### Added
+
+- DSH `0.1.7` support: the peer range now also covers `0.1.5-rc.3` (missed
+  when it shipped) and every published `0.1.7` prerelease — `0.1.7-alpha.1`,
+  `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`. The `0.1.5-rc.3` and `0.1.7`
+  tarballs ship a `lib/` that is byte-identical to `0.1.5-rc.2`'s, so the
+  plugin's seam usage (`HttpFetchProvider`, `LOCAL_FETCH_PROVIDER_ID`,
+  `DEFAULT_USER_AGENT`, `ctx.web.registerFetchProvider`) needs no runtime
+  change; the CI matrix now also runs the suite against `0.1.7-rc.2`.
+
+### Changed
+
+- Development dependencies track the `0.1.7-rc.2` stack —
+  `@deepseek-ai/cordis` 4.0.4 and `@deepseek-ai/schemastery` 3.18.4, the
+  versions a real DSH `0.1.7` install resolves — so local tests exercise the
+  same closure the new harness ships. The `@deepseek-ai/cordis` and
+  `@deepseek-ai/schemastery` peer ranges already admit both, so they are
+  unchanged.
+
 ## [0.1.1-alpha.1] - 2026-09-20
 
 Release tooling only — no runtime code changes. This prerelease exists to
@@ -72,5 +93,6 @@ First published release.
   check rather than being partly accepted, so a DNS answer cannot widen the
   policy by smuggling a private address alongside a placeholder.
 
+[0.1.1-alpha.2]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.2
 [0.1.1-alpha.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.1
 [0.1.0]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.0
