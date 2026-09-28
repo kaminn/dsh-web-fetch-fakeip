@@ -55,18 +55,18 @@ the destination policy.
 
 ### Install into a profile
 
-The package is published to npm. The line that tracks current DSH releases
-publishes under the `next` dist-tag, so install by tag:
+The package is published to npm. A bare install resolves `latest`:
 
 ```sh
-dsh plugin --profile web add dsh-web-fetch-fakeip@next
+dsh plugin --profile web add dsh-web-fetch-fakeip
 ```
 
 `dsh plugin` forwards to pnpm inside the profile, so any npm specifier works
-the same way — a bare name (`dsh-web-fetch-fakeip`), an exact version
-(`dsh-web-fetch-fakeip@0.1.1-rc.1`), a git URL, or a local path. Mind the
-dist-tag: `latest` still points at `0.1.0`, which targets the older DSH lines;
-current DSH (`0.1.7-rc`) needs the `next` channel.
+the same way — an exact version (`dsh-web-fetch-fakeip@0.1.1`), a dist-tag
+(`...@next`), a git URL, or a local path. Dist-tags: `latest` is the stable
+line, and the peer range in its `package.json` enumerates every DSH version
+the test matrix runs against; prereleases tracking newer DSH lines publish
+under `next` first and are promoted after they settle.
 
 From a local checkout instead:
 

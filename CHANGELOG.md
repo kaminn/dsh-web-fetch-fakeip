@@ -10,6 +10,18 @@ configuration fields, and the supported DSH peer versions — may change in a
 minor release. A breaking change will be called out explicitly under
 `### Changed` or `### Removed`.
 
+## [0.1.1] - 2026-09-28
+
+Promotes the `0.1.1` line to stable. No changes since `0.1.1-rc.1`, and no
+runtime code changes since `0.1.0` — the release candidate passed the full CI
+matrix (7/7 across node 22/24 and every claimed DSH line) and has been running
+in a live fake-ip deployment.
+
+Relative to `0.1.0`, the `0.1.1` line carries: a peer range extended to
+`0.1.5-rc.3` and every published `0.1.7` prerelease, the CI matrix fix that
+keeps the older DSH lines installable against the 0.1.7-era dev stack, and a
+quick start that installs from npm by name.
+
 ## [0.1.1-rc.1] - 2026-09-28
 
 First release candidate of the `0.1.1` line. No runtime code changes — the
@@ -119,6 +131,7 @@ First published release.
   check rather than being partly accepted, so a DNS answer cannot widen the
   policy by smuggling a private address alongside a placeholder.
 
+[0.1.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1
 [0.1.1-rc.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-rc.1
 [0.1.1-alpha.2]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.2
 [0.1.1-alpha.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.1

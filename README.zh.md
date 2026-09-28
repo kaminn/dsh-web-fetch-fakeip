@@ -50,17 +50,17 @@ Error: URL hostname "example.com" resolves to a non-public IP address
 
 ### 安装到 profile
 
-本包已发布到 npm。跟随当前 DSH 发布的版本线走 `next` dist-tag，按标签安装：
+本包已发布到 npm。裸安装解析到 `latest`：
 
 ```sh
-dsh plugin --profile web add dsh-web-fetch-fakeip@next
+dsh plugin --profile web add dsh-web-fetch-fakeip
 ```
 
 `dsh plugin` 会把参数原样转发给 profile 内的 pnpm，因此任何 npm 描述符都可以
-——裸包名（`dsh-web-fetch-fakeip`）、精确版本
-（`dsh-web-fetch-fakeip@0.1.1-rc.1`）、git URL 或本地路径。注意 dist-tag：
-`latest` 仍指向支持老 DSH 线的 `0.1.0`，当前的 DSH（`0.1.7-rc`）需要 `next`
-通道。
+——精确版本（`dsh-web-fetch-fakeip@0.1.1`）、dist-tag（`...@next`）、git URL
+或本地路径。dist-tag 语义：`latest` 为稳定线，其 `package.json` 的 peer 范围
+逐一列出了测试矩阵覆盖的 DSH 版本；跟踪更新 DSH 线的预发布先发 `next`，稳定
+后再晋升。
 
 也可以从本地 checkout 安装：
 
