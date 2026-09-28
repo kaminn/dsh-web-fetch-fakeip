@@ -55,6 +55,21 @@ the destination policy.
 
 ### Install into a profile
 
+The package is published to npm. The line that tracks current DSH releases
+publishes under the `next` dist-tag, so install by tag:
+
+```sh
+dsh plugin --profile web add dsh-web-fetch-fakeip@next
+```
+
+`dsh plugin` forwards to pnpm inside the profile, so any npm specifier works
+the same way — a bare name (`dsh-web-fetch-fakeip`), an exact version
+(`dsh-web-fetch-fakeip@0.1.1-rc.1`), a git URL, or a local path. Mind the
+dist-tag: `latest` still points at `0.1.0`, which targets the older DSH lines;
+current DSH (`0.1.7-rc`) needs the `next` channel.
+
+From a local checkout instead:
+
 ```sh
 # From the directory holding this checkout. The relative path is anchored to
 # your invoking directory, not to the profile.

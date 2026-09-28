@@ -40,16 +40,30 @@ jobs:
       matrix:
         include:
           # The stable DSH line, and the oldest release this plugin claims.
+          # Pre-0.1.7 rows carry the cordis/schemastery pair their DSH line
+          # shipped with: ^0.1.5-rc.2 floats @deepseek-ai/dsh-llm to
+          # 0.1.5-rc.3, which exact-pins cordis 4.0.2, so the override must
+          # downgrade those peers too or the install fails with ERESOLVE.
           - node: 22
             dsh: 0.1.5-rc.2
+            cordis: 4.0.2
+            schemastery: 3.18.2
           - node: 24
             dsh: 0.1.5-rc.2
+            cordis: 4.0.2
+            schemastery: 3.18.2
           - node: 24
             dsh: 0.1.6-alpha.2
-          - node: 24
-            dsh: 0.1.7-rc.2
+            cordis: 4.0.2
+            schemastery: 3.18.2
           - node: 24
             dsh: 0.1.2-rc.1
+            cordis: 4.0.2
+            schemastery: 3.18.2
+          - node: 24
+            dsh: 0.1.7-rc.2
+            cordis: 4.0.4
+            schemastery: 3.18.4
     steps:
       - uses: actions/checkout@v4
 
@@ -72,7 +86,9 @@ jobs:
           npm install --no-audit --no-fund
           npm install --no-audit --no-fund --no-save \
             "@deepseek-ai/dsh-web-fetch-http@${{ matrix.dsh }}" \
-            "@deepseek-ai/dsh-web@${{ matrix.dsh }}"
+            "@deepseek-ai/dsh-web@${{ matrix.dsh }}" \
+            "@deepseek-ai/cordis@${{ matrix.cordis }}" \
+            "@deepseek-ai/schemastery@${{ matrix.schemastery }}"
 
       - name: Report resolved DSH versions
         run: |

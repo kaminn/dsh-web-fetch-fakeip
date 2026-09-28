@@ -10,6 +10,32 @@ configuration fields, and the supported DSH peer versions — may change in a
 minor release. A breaking change will be called out explicitly under
 `### Changed` or `### Removed`.
 
+## [0.1.1-rc.1] - 2026-09-28
+
+First release candidate of the `0.1.1` line. No runtime code changes — the
+plugin's source is untouched since `0.1.0`; this cycle was peer declarations,
+CI, and documentation.
+
+### Fixed
+
+- The CI matrix's `dsh 0.1.5-rc.2` rows failed at **dependency install**, not
+  in tests: `^0.1.5-rc.2` floats `@deepseek-ai/dsh-llm` to `0.1.5-rc.3`, which
+  pins `@deepseek-ai/cordis` to exactly 4.0.2 — irreconcilable with the
+  0.1.7-era devDependencies the matrix override left in place. Matrix rows now
+  pin the `@deepseek-ai/cordis` / `@deepseek-ai/schemastery` pair their DSH
+  line shipped with, so every claimed peer version installs coherently again.
+  The offline suite passes against the restored 0.1.5-rc.2 closure (38 tests),
+  and compatibility is kept rather than dropped: the seam is byte-identical
+  across `0.1.5-rc.2`…`0.1.7-rc.2`.
+
+### Changed
+
+- README quick start now installs from npm by name —
+  `dsh plugin --profile web add dsh-web-fetch-fakeip@next` — with the local
+  checkout path kept as an alternative. `latest` still points at `0.1.0`
+  (which targets the older DSH lines), so the document calls out that current
+  DSH needs the `next` channel.
+
 ## [0.1.1-alpha.2] - 2026-09-28
 
 ### Added
@@ -93,6 +119,7 @@ First published release.
   check rather than being partly accepted, so a DNS answer cannot widen the
   policy by smuggling a private address alongside a placeholder.
 
+[0.1.1-rc.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-rc.1
 [0.1.1-alpha.2]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.2
 [0.1.1-alpha.1]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.1-alpha.1
 [0.1.0]: https://github.com/kaminn/dsh-web-fetch-fakeip/releases/tag/v0.1.0
