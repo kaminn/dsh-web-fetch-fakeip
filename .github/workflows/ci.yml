@@ -31,6 +31,11 @@ jobs:
   # `latest` on npm still points at an old 0.0.1-rc line for these packages
   # while the real current release sits under the `next` tag, so every version
   # is pinned explicitly rather than resolved by range.
+  #
+  # 0.2.0-rc.2 matters more than the others: it is the first runtime that
+  # refuses to load a bundle whose declared DSH peers exclude it, so a stale
+  # peer range silently removes this plugin instead of failing loudly. The
+  # `compat` test in the offline suite asserts that gate's decision directly.
   test:
     name: test · node ${{ matrix.node }} · dsh ${{ matrix.dsh }}
     runs-on: ubuntu-latest
@@ -62,6 +67,13 @@ jobs:
             schemastery: 3.18.2
           - node: 24
             dsh: 0.1.7-rc.2
+            cordis: 4.0.4
+            schemastery: 3.18.4
+          # The current line. Its seam tarballs are byte-identical to
+          # 0.1.7-rc.2's, so the suite must pass here unchanged — and the peer
+          # range must admit it, which is what 0.1.1 got wrong.
+          - node: 24
+            dsh: 0.2.0-rc.2
             cordis: 4.0.4
             schemastery: 3.18.4
     steps:
@@ -104,6 +116,9 @@ jobs:
           node --check src/resolver.js
           node --check scripts/diagnose.mjs
           node --check scripts/check-package.mjs
+          node --check scripts/release-control.mjs
+          node --check test/compat.test.js
+          node --check test/transport.live.js
 
       - name: Offline tests
         run: npm test

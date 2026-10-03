@@ -19,8 +19,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { lookup } from 'node:dns/promises'
 
+import { Context } from '@deepseek-ai/cordis'
+import { WebRuntime } from '@deepseek-ai/dsh-web'
 import { Config } from '../src/config.js'
 import { compileFakeIpRanges, createFakeIpResolver } from '../src/resolver.js'
+import { apply } from '../src/index.js'
 import { HttpFetchProvider } from '@deepseek-ai/dsh-web-fetch-http'
 
 /** Build the provider exactly as `apply()` does, without a Cordis context. */
@@ -97,6 +100,45 @@ test('a non-2xx response resolves as a result, not an error', { skip: !live ? 'n
   assert.equal(typeof result.body.content, 'string')
   assert.equal(typeof result.truncated, 'boolean')
   assert.equal(typeof result.url, 'string')
+})
+
+// ── the real seam: apply() into a live ctx.web ─────────────────────────────
+//
+// `buildProvider()` above mirrors what `apply()` does, which makes it useful
+// for transport assertions but blind to a registration mistake: if `apply()`
+// registered a different id, or registered nothing, every test above would
+// still pass. This group closes that gap by driving the actual entry point
+// through the actual `ctx.web` service, which is the path the harness uses.
+
+test('apply() registers into a live ctx.web and serves a fetch through it', { skip: !live ? 'not a fake-ip environment' : false }, async () => {
+  const ctx = new Context()
+  // The stock service, constructed exactly as the `web` row does it.
+  const web = new WebRuntime(ctx, { fetchProvider: 'http' })
+  // Cordis exposes the service through a tracked view, not as the raw instance,
+  // but the registries behind it are shared — which is what matters here.
+  assert.equal(ctx.web.ctx, ctx)
+  assert.equal(ctx.web.fetchProviders, web.fetchProviders)
+
+  apply(ctx, Config({}))
+
+  // The plugin must claim the stock id, or the configured `fetchProvider: http`
+  // would not select it.
+  assert.deepEqual([...ctx.web.fetchProviders.keys()], ['http'])
+
+  const result = await ctx.web.fetch({ url: 'https://example.com/' }, AbortSignal.timeout(30_000))
+  assert.equal(result.statusCode, 200)
+  assert.equal(result.body.kind, 'html')
+  assert.match(result.body.content, /Example Domain/)
+})
+
+test('a duplicate registration is refused by the seam', () => {
+  // This is the constraint that forces cordis.patch.yml to disable the stock
+  // row: the seam rejects a second provider with the same id.
+  const ctx = new Context()
+  const web = new WebRuntime(ctx, { fetchProvider: 'http' })
+  apply(ctx, Config({}))
+  assert.throws(() => apply(ctx, Config({})), /already registered/)
+  assert.deepEqual([...web.fetchProviders.keys()], ['http'])
 })
 
 // ── the guarantee, verified against the live transport ─────────────────────

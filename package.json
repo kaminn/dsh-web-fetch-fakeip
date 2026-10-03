@@ -1,6 +1,6 @@
 {
   "name": "dsh-web-fetch-fakeip",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "fake-ip-aware WebFetchProvider for the DeepSeek Harness web seam — keeps the web_fetch tool working under mihomo/Clash fake-ip DNS without disabling fake-ip or setting proxy environment variables.",
   "type": "module",
   "main": "src/index.js",
@@ -67,14 +67,15 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-web": "0.1.2-rc.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-alpha.2 || 0.1.5-rc.1 || 0.1.5-rc.2 || 0.1.5-rc.3 || 0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2",
-    "@deepseek-ai/dsh-web-fetch-http": "0.1.2-rc.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-alpha.2 || 0.1.5-rc.1 || 0.1.5-rc.2 || 0.1.5-rc.3 || 0.1.6-alpha.1 || 0.1.6-alpha.2 || 0.1.7-alpha.1 || 0.1.7-alpha.2 || 0.1.7-rc.1 || 0.1.7-rc.2",
+    "@deepseek-ai/dsh-web": ">=0.1.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-web-fetch-http": ">=0.1.2-rc.1 <0.3.0-0",
     "@deepseek-ai/schemastery": ">=3.18.2 <4.0.0-0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/dsh-web": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-web-fetch-http": "0.1.7-rc.2",
-    "@deepseek-ai/schemastery": "3.18.4"
+    "@deepseek-ai/dsh-web": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-web-fetch-http": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "semver": "^7.6.0"
   }
 }

@@ -56,11 +56,22 @@ Error: URL hostname "example.com" resolves to a non-public IP address
 dsh plugin --profile web add dsh-web-fetch-fakeip
 ```
 
+从 DSH `0.1.2-rc.1` 到 `0.2.x` 的所有线，这条命令都是对的。上一版 `latest`
+（`0.1.1`）会被 DSH `0.2.0-rc.2` 的兼容性门禁跳过；若你在该 DSH 版本上且早于
+本次发布就已安装，执行一次更新即可：
+
+```sh
+dsh plugin --profile web update dsh-web-fetch-fakeip
+```
+
 `dsh plugin` 会把参数原样转发给 profile 内的 pnpm，因此任何 npm 描述符都可以
-——精确版本（`dsh-web-fetch-fakeip@0.1.1`）、dist-tag（`...@next`）、git URL
-或本地路径。dist-tag 语义：`latest` 为稳定线，其 `package.json` 的 peer 范围
-逐一列出了测试矩阵覆盖的 DSH 版本；跟踪更新 DSH 线的预发布先发 `next`，稳定
-后再晋升。
+——精确版本（`dsh-web-fetch-fakeip@0.2.0`）、dist-tag（`...@next`）、git URL
+或本地路径。
+
+dist-tag 语义：`latest` 跟踪当前 DSH 线。版本号带预发布后缀（`-rc.1`、
+`-alpha.2`）的发布走 `next`，因此 `latest` 只会移向刻意切出的版本。插件的
+minor 版本即它支持的 DSH minor 线——`0.2.x` 支持 DSH `0.2.*`——详见
+[版本策略](CHANGELOG.md#versioning-policy)。
 
 也可以从本地 checkout 安装：
 
@@ -132,6 +143,35 @@ dsh plugin --profile web update dsh-web-fetch-fakeip
 
 不带 ref 的 `github:` 说明符跟踪仓库的默认分支，pnpm 在安装/更新时才解析它——
 因此更新是显式的，绝不会静默发生。
+
+### DSH 升级后插件不再加载时
+
+自 DSH `0.2.0-rc.2` 起，若某个 bundle 的 `peerDependencies` 不包含当前运行的 DSH
+版本，harness 会拒绝加载该 bundle，并在启动时提示一次：
+
+```text
+dsh: skipping profile bundle "dsh-web-fetch-fakeip": Error: Plugin
+dsh-web-fetch-fakeip@0.1.1 is incompatible with dsh 0.2.0-rc.2: ...
+```
+
+此时 `web_fetch` 工具的表现与本插件存在之前完全一样——fake-ip DNS 下每个主机名
+都以 `resolves to a non-public IP address` 失败。这不是崩溃：bundle 被跳过，原版
+provider 接管了。
+
+正确的修法是更新：
+
+```sh
+dsh plugin --profile web update dsh-web-fetch-fakeip
+```
+
+peer 范围采用的是有界区间（`>=0.1.2-rc.1 <0.3.0-0`），而不是逐一罗列已发布的
+预发布版本，因此新的 `0.2.x` 或 `0.2.0` 正式版不会再触发该门禁。`0.3.0` 线则
+**有意**仍会触发：那是一个尚未经过任何验证的兼容性声明，harness 要求明确决策是
+对的。
+
+也可以用 `dsh plugin allow-version` 授予精确版本豁免。那是"你确知接缝未变"时的
+逃生通道，而不是修复方案。对本插件而言，诚实的答案就是更新——出问题的是声明，
+不是代码。
 
 -----
 
@@ -321,6 +361,7 @@ resolver 对每组应答的判定：
 | [`scripts/check-package.mjs`](scripts/check-package.mjs) | 当发布包缺少必需文件或夹带禁止文件时失败 |
 | [`scripts/release-control.mjs`](scripts/release-control.mjs) | 发布门禁：标签/版本校验、npm 幂等检查、CHANGELOG 说明提取、GitHub Release 同步 |
 | [`test/resolver.test.js`](test/resolver.test.js) | 离线单元测试（不联网） |
+| [`test/compat.test.js`](test/compat.test.js) | 用 harness 的兼容性门禁校验声明的 DSH peer 范围，并断言 `apply()` 在真实接缝上仍能注册 |
 | [`test/release-control.test.js`](test/release-control.test.js) | 发布门禁的离线测试 |
 | [`test/transport.live.js`](test/transport.live.js) | 可选的真实网络测试 |
 
@@ -351,6 +392,19 @@ npm run verify    # check + pack:check——发布工作流所依据的门禁
 拒绝。在没有 fake-ip DNS 的主机上，fake-ip 相关断言会自动跳过，因此该套件在任何
 环境都有意义。
 
+`test/compat.test.js` 覆盖的正是其他套件看不见的失效模式：它从 `package.json`
+重新推导 harness 的兼容性判定——与启动时 `evaluatePluginCompatibility` 所做的是
+同一个决策——因此，一个会导致整个 bundle 被跳过的 peer 范围会在这里、离线地失败，
+而不是以"provider 静默消失"的形式暴露出来。它同时断言 CI 矩阵钉住的每个 DSH 版本
+都满足声明的范围，这正是防止两者漂移的机制。
+
+两套测试都驱动**真实入口**而非它的副本：`apply()` 会注册进真实的 `Context` +
+`WebRuntime`（`ctx.web`），并通过 `ctx.web.fetch()` 发起抓取。因此注册层面的错误
+——id 写错，或根本没注册——会让测试失败，而不是被手工搭建的 provider 桩掩盖过去。
+
+`devDependencies` 跟踪本插件声明支持的最新 DSH 线（`0.2.0-rc.2`），因此本地套件
+跑的就是当前 harness 实际携带的闭包。
+
 `pack:check` 的存在理由：`files` 白名单写错在开发期是看不见的——整个工作树都在——
 只有消费者安装之后才会暴露。本仓库已经踩过一次，因此该检查在**每次 CI** 都跑，
 而不只在发布时跑。
@@ -368,6 +422,18 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 
 `node_modules` 已被 gitignore。
 
+### 版本策略
+
+插件的 minor 版本即它支持的 DSH 线：**插件 `0.M.x` 支持 DSH `0.M.*`**，声明的
+DSH peer 范围上界恒为 `<0.(M+1).0-0`。因此 `0.2.0` 声明
+`>=0.1.2-rc.1 <0.3.0-0`，而 DSH `0.3` 线将作为插件 `0.3.0` 采纳。完整理由见
+[CHANGELOG](CHANGELOG.md#versioning-policy)；`test/compat.test.js` 会从 manifest
+自身的 minor 版本推导出期望上界，因此这条规则不会漂移。
+
+由于范围是有界的而非开放式的，同一条 minor 线内的 DSH **补丁版或预发布**无需
+插件发布——但新的 DSH **minor 线**需要，且在它发布之前门禁会跳过本 bundle。
+这是刻意的：采纳一条未经测试的线应当是一个明确决策。
+
 ### 持续集成
 
 | 工作流 | 触发 | 用途 |
@@ -375,8 +441,9 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 | [`ci.yml`](.github/workflows/ci.yml) | 推送到 `main`、pull request | 覆盖受支持 DSH 版本的测试矩阵、打包校验、真实网络通道 |
 | [`release.yml`](.github/workflows/release.yml) | 推送 `v*` 标签 | 经 Trusted Publishing（OIDC）发布到 npm，随后创建 GitHub Release |
 
-测试矩阵**显式钉住**每个 DSH 版本，而不是用范围解析：`@deepseek-ai/dsh-*` 在 npm 上的
-`latest` 标签仍指向旧的 `0.0.1-rc` 线，而当前版本挂在 `next` 下。
+测试矩阵**显式钉住**每个 DSH 版本，而不是用范围解析。`@deepseek-ai/dsh-*` 各子包
+在 npm 上的 `latest` 是陈旧的（`0.0.1-rc.x`），尽管 `@deepseek-ai/dsh` 主包本身把
+当前版本同时发到 `latest` 和 `next`——所以用范围会解析到错误的线。
 
 发布流程与一次性的 npm 配置见 [RELEASING.md](RELEASING.md)。
 
@@ -414,6 +481,10 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 - **字符集仅取自 `Content-Type` 头**（默认 UTF-8）—— 同样是继承行为；HTML 中的
   `<meta charset>` 声明会被忽略。
 - **必须禁用原版 provider。** 两个 provider 不能共用 `http` 这个 id。
+- **未来的 DSH 线需要更新 peer 范围。** 声明的范围止于 `0.3.0`，因此 `0.3.x`
+  的 harness 会跳过本 bundle，直到范围被放宽。这是刻意的——未经测试的大版本线
+  应当是一个明确决策，而不是想当然——但这也意味着 DSH 升级后，`web_fetch`
+  可能需要先更新插件才能恢复。
 
 ## 许可证
 

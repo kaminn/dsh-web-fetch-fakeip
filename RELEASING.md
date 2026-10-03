@@ -125,8 +125,35 @@ An unpublished version number cannot be reused for 24 hours.
 - [ ] `npm run verify` passes locally
 - [ ] `npm run pack:check` reports the expected file list
 - [ ] `CHANGELOG.md` has a `## [<version>]` section for the version being tagged
-- [ ] `peerDependencies` still list every DSH version the test matrix covers
 - [ ] `package.json#version` is bumped (`npm version` does this for you)
+- [ ] The version's minor line matches the declared DSH support: plugin `0.M.x`
+      declares `<0.(M+1).0-0`. `test/compat.test.js` asserts this, so `npm test`
+      catches a mismatch — but a DSH **minor** bump also needs the new line added
+      to the CI matrix, which no test can do for you.
+- [ ] Every DSH version in the CI matrix satisfies the declared peer range
+      (also asserted by `test/compat.test.js`)
+
+## Choosing the version number
+
+The plugin's minor version names the DSH minor line it supports, and the peer
+range's upper bound follows from it — see
+[Versioning policy](CHANGELOG.md#versioning-policy). Concretely:
+
+| Change | Version |
+| --- | --- |
+| Adopting a new DSH minor line (`0.2` → `0.3`) | `0.3.0` |
+| A fix within the same DSH line | `0.2.1` (patch) |
+| A prerelease of either, for a `next`-only trial | `0.3.0-rc.1`, `0.2.1-rc.1` |
+
+Whether the version carries a prerelease suffix decides the dist-tag, and
+nothing else does: `release.yml` publishes a version containing `-` under
+`next`, and everything else under `latest`. So **a version that must reach
+`latest` cannot have a `-`**. There is no separate "promote" step.
+
+Note that a bounded range claims the DSH **final** release before it exists.
+That is intentional — it means a `0.2.0` final needs no plugin release — but it
+also means a DSH minor bump should be adopted *before* the final lands, so the
+matrix is testing the new line by the time users are on it.
 
 ## How the pieces fit
 

@@ -61,12 +61,24 @@ The package is published to npm. A bare install resolves `latest`:
 dsh plugin --profile web add dsh-web-fetch-fakeip
 ```
 
+This is the right command for every DSH line from `0.1.2-rc.1` through `0.2.x`.
+`0.1.1` — the previous `latest` — is skipped by the DSH `0.2.0-rc.2`
+compatibility gate, so if you are on that DSH version and installed before this
+release, run an update:
+
+```sh
+dsh plugin --profile web update dsh-web-fetch-fakeip
+```
+
 `dsh plugin` forwards to pnpm inside the profile, so any npm specifier works
-the same way — an exact version (`dsh-web-fetch-fakeip@0.1.1`), a dist-tag
-(`...@next`), a git URL, or a local path. Dist-tags: `latest` is the stable
-line, and the peer range in its `package.json` enumerates every DSH version
-the test matrix runs against; prereleases tracking newer DSH lines publish
-under `next` first and are promoted after they settle.
+the same way — an exact version (`dsh-web-fetch-fakeip@0.2.0`), a dist-tag
+(`...@next`), a git URL, or a local path.
+
+Dist-tags: `latest` tracks the current DSH line. A release whose version has a
+prerelease suffix (`-rc.1`, `-alpha.2`) publishes under `next` instead, so
+`latest` only ever moves to a version that was cut deliberately. The plugin's
+minor version names the DSH minor line it supports — `0.2.x` supports DSH
+`0.2.*` — see the [versioning policy](CHANGELOG.md#versioning-policy).
 
 From a local checkout instead:
 
@@ -145,6 +157,38 @@ dsh plugin --profile web update dsh-web-fetch-fakeip
 
 A `github:` spec without a ref tracks the repository's default branch, and pnpm
 resolves it at install/update time — so updates are explicit, never silent.
+
+### If a DSH update stops the plugin loading
+
+Since DSH `0.2.0-rc.2` the harness refuses to load a bundle whose
+`peerDependencies` exclude the running DSH version, and says so once at
+startup:
+
+```text
+dsh: skipping profile bundle "dsh-web-fetch-fakeip": Error: Plugin
+dsh-web-fetch-fakeip@0.1.1 is incompatible with dsh 0.2.0-rc.2: ...
+```
+
+The `web_fetch` tool then behaves exactly as it did before this plugin existed
+— every hostname fails with `resolves to a non-public IP address` under
+fake-ip DNS. It is not a crash: the bundle is skipped and the stock provider
+takes over.
+
+Fix it by updating, which is the intended remedy:
+
+```sh
+dsh plugin --profile web update dsh-web-fetch-fakeip
+```
+
+The peer range is bounded (`>=0.1.2-rc.1 <0.3.0-0`) rather than a list of
+published prereleases, so a new `0.2.x` or `0.2.0` final no longer trips the
+gate. A `0.3.0` line deliberately does: that is a real compatibility claim
+nobody has tested yet, and the harness is right to ask.
+
+`dsh plugin allow-version` can grant an exact-version exemption instead. It is
+the escape hatch for when you know the seam did not change — not the fix. For
+this plugin the honest answer is to update, because the declared range is what
+was wrong, not the code.
 
 -----
 
@@ -345,8 +389,9 @@ placeholder.
 | [`scripts/check-package.mjs`](scripts/check-package.mjs) | Fails when the published tarball is missing a required file or ships a forbidden one |
 | [`scripts/release-control.mjs`](scripts/release-control.mjs) | Release gates: tag/version validation, npm idempotency check, CHANGELOG notes, GitHub Release sync |
 | [`test/resolver.test.js`](test/resolver.test.js) | Offline unit suite (no network) |
+| [`test/compat.test.js`](test/compat.test.js) | Asserts the declared DSH peer range against the harness's compatibility gate, and that `apply()` registers into a real `ctx.web` |
 | [`test/release-control.test.js`](test/release-control.test.js) | Offline tests for the release gates |
-| [`test/transport.live.js`](test/transport.live.js) | Opt-in live suite (real transport) |
+| [`test/transport.live.js`](test/transport.live.js) | Opt-in live suite (real transport, plus `apply()` driven through a live `ctx.web`) |
 
 ### Why the stock row must be disabled
 
@@ -378,6 +423,23 @@ private destination is **still** refused. Its fake-ip assertions skip
 themselves on a host without fake-ip DNS, so the suite stays meaningful
 anywhere.
 
+`test/compat.test.js` covers the failure mode the other suites cannot see. It
+re-derives the harness's compatibility verdict from `package.json` — the same
+decision `evaluatePluginCompatibility` makes at boot — so a peer range that
+would get the whole bundle skipped fails here, offline, instead of surfacing as
+a silently missing provider. It also asserts that every DSH version pinned in
+the CI matrix satisfies the declared range, which is what keeps the two from
+drifting apart.
+
+Both suites drive the real entry point rather than a copy of it: `apply()` is
+registered into an actual `Context` + `WebRuntime` (`ctx.web`) and the fetch is
+made through `ctx.web.fetch()`, so a registration mistake — a wrong provider
+id, or registering nothing — fails the tests instead of hiding behind
+hand-built provider stubs.
+
+`devDependencies` track the newest DSH line the plugin claims (`0.2.0-rc.2`),
+so the local suite exercises the closure a current harness actually ships.
+
 `pack:check` exists because a `files` whitelist mistake is invisible during
 development — the whole working tree is present — and only surfaces once a
 consumer installs the package. It has already happened here, so the check runs
@@ -396,6 +458,21 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 
 `node_modules` is gitignored.
 
+### Versioning
+
+The plugin's minor version tracks the DSH line it supports: **plugin `0.M.x`
+supports DSH `0.M.*`**, and the declared DSH peer range's upper bound is always
+`<0.(M+1).0-0`. So `0.2.0` declares `>=0.1.2-rc.1 <0.3.0-0`, and the DSH `0.3`
+line will be adopted as plugin `0.3.0`. The full rationale is in the
+[CHANGELOG](CHANGELOG.md#versioning-policy); `test/compat.test.js` derives the
+expected upper bound from the manifest's own minor version, so the rule cannot
+drift.
+
+Because the range is bounded rather than open-ended, a new DSH **patch or
+prerelease inside the same minor line** needs no plugin release — but a new
+DSH **minor line** does, and until it ships the gate skips the bundle. That is
+deliberate: adopting an untested line should be an explicit decision.
+
 ### Continuous integration
 
 | Workflow | Trigger | Purpose |
@@ -404,8 +481,10 @@ ln -s "$HOME/.dsh/profiles/node_modules" node_modules
 | [`release.yml`](.github/workflows/release.yml) | tag push `v*` | Publish to npm via Trusted Publishing (OIDC), then create the GitHub Release |
 
 The test matrix pins each DSH version explicitly rather than resolving by
-range: npm's `latest` tag for the `@deepseek-ai/dsh-*` packages still points at
-an old `0.0.1-rc` line while the current release sits under `next`.
+range. npm's `latest` tag for the `@deepseek-ai/dsh-*` sub-packages is stale
+(`0.0.1-rc.x`) even though the `@deepseek-ai/dsh` package itself publishes the
+current release to `latest` and `next` alike, so a range would resolve to the
+wrong line.
 
 See [RELEASING.md](RELEASING.md) for the release process and the one-time npm
 setup.
@@ -452,6 +531,11 @@ block (for example `198.18.0.0/16`) rather than the wider default.
   inherited; an HTML `<meta charset>` declaration is ignored.
 - **The stock provider must be disabled.** Two providers cannot share the
   `http` id.
+- **A future DSH line needs a peer-range update.** The declared range stops at
+  `0.3.0`, so a `0.3.x` harness skips this bundle until the range is widened.
+  That is deliberate — an untested major line should be an explicit decision
+  rather than an assumed one — but it does mean a DSH upgrade can require a
+  plugin update before `web_fetch` works again.
 
 ## License
 
